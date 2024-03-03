@@ -1,12 +1,12 @@
 import System.IO
 import System.Environment
 import Text.Read
--- TODO are these imports ok? according to the assignment
 import Data.List (sortBy, foldl')
 import Data.Function (on)
-import Data.Map.Strict as Map
+import Data.Map as Map
 
--- This argument parsing logic was adapted from the book Learn You Haskell For Great Good
+-- The argument parsing logic & tree structure was adapted from the book 
+-- Learn You Haskell For Great Good
 dispatch :: [(String, [String] -> IO ())]
 dispatch = [("-1", classify), ("-2", train)]
 
@@ -20,6 +20,7 @@ main = do
 data Tree = EmptyTree | Leaf String | Node (Int, Float) Tree Tree deriving (Show)
 
 classify :: [FilePath] -> IO ()
+classify [] = error "Argument error. Filepath wasn't provided."
 classify (tree_filename:args) = do
     handle <- openFile tree_filename ReadMode
     tree <- buildTree handle 0
@@ -71,7 +72,6 @@ toNumber x =
 
 buildTree :: Handle -> Int -> IO Tree
 buildTree handle level = do
-    -- TODO: I could check for whitespace characters in here
     line <- hGetLine handle
     let node = words (Prelude.drop (2*level) line)
     case node of
@@ -83,9 +83,8 @@ buildTree handle level = do
             return $ Leaf c
         _ -> error "Poorly formatted input file"
 
--- TODO what if those files have newlines at the end?
-
 train :: [FilePath] -> IO ()
+train [] = error "Argument error. File path wasn't provided."
 train (training_dataset_filename:_) = do
     contents <- readFile training_dataset_filename
     let dataset = Prelude.map splitLine (lines contents)
@@ -100,7 +99,7 @@ features [] = 0
 features (x:_) = length x - 1
 
 thresholdSplit :: [[String]] -> [[String]] -> Int -> Float -> ([[String]], [[String]])
-thresholdSplit [] y f t = ([], y)
+thresholdSplit [] y _ _ = ([], y)
 thresholdSplit (x:xs) y f t = do
     if toNumber (x !! f) < t then
         thresholdSplit xs (x:y) f t  
@@ -112,12 +111,11 @@ trainTree dataset indent = do
     if length (countClasses dataset) == 1 then do
         putStrLn (concat (replicate indent " ") ++ "Leaf: " ++ last (head dataset))
     else do
-        let (g, f, t) = trainTree' dataset (features dataset - 1)
+        let (_, f, t) = trainTree' dataset (features dataset - 1)
         putStrLn (concat (replicate indent " ") ++ "Node: " ++ show f ++ ", " ++ show t)
-        let (x, y) = thresholdSplit (sortAttribute dataset f) [[]] f t    
-        trainTree x (indent + 2)
-        trainTree y (indent + 2)
-    
+        let (left, right) = thresholdSplit (sortAttribute dataset f) [[]] f t    
+        trainTree left (indent + 2)
+        trainTree right (indent + 2)
 
 trainTree' :: [[String]] -> Int -> (Float, Int, Float)
 trainTree' _ (-1) = (1000, 0 ,0)
@@ -162,7 +160,6 @@ safeLast :: [a] -> Maybe a
 safeLast [] = Nothing
 safeLast xs = Just (last xs)
 
--- TODO
 countClasses :: [[String]] -> Map String Float
 countClasses = Data.List.foldl' (\mp x -> case safeLast x of 
     Just l -> Map.insertWith (+) l 1 mp
