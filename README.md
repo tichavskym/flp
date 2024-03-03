@@ -1,6 +1,9 @@
 # FLP: Binary decision tree implementation in Haskell
 
 - [Assignment](https://docs.google.com/document/d/1WChPfFOMtU3GBuqEZRUKFrNBsdJuaQ1pg1BIXiWPe98/edit?pli=1)
+- [CART & Gini index
+  explained](https://medium.com/geekculture/decision-trees-with-cart-algorithm-7e179acee8ff)
+- [Folds explained](https://wiki.haskell.org/Foldr_Foldl_Foldl')
 
 ## Example usage
 
@@ -15,6 +18,3 @@
   junk
 - [ ] Handle files with newlines at the end
 
-## Notes
-
-- [Folds explained](https://wiki.haskell.org/Foldr_Foldl_Foldl')
