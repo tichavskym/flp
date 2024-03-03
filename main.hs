@@ -1,6 +1,12 @@
 import System.IO
 import System.Environment
 import Text.Read
+-- TODO are these imports ok? according to the assignment
+import Data.List (sortBy, foldl')
+import Data.Function (on)
+import Data.Map (insertWith)
+import Data.Map.Strict as Map
+import Data.Time.Format.ISO8601 (yearFormat)
 
 -- This argument parsing logic was adapted from the book Learn You Haskell For Great Good
 dispatch :: [(String, [String] -> IO ())]
@@ -9,7 +15,7 @@ dispatch = [("-1", classify), ("-2", train)]
 main :: IO ()
 main = do
     (command : args) <- getArgs
-    let (Just action) = lookup command dispatch
+    let (Just action) = Prelude.lookup command dispatch
     action args
 
 data Tree = EmptyTree | Leaf String | Node (Int, Float) Tree Tree deriving (Show)
@@ -32,10 +38,13 @@ classify' _ (_:_) =
 classify' _ _ = 
     error "Argument is missing"
 
+splitLine :: [Char] -> [String]
+splitLine line = words [if c == ',' then ' ' else c|c <- line]
+
 classifyLines :: Handle -> Tree -> IO ()
 classifyLines handle tree = do
     line <- hGetLine handle
-    classifyOneLine (words [if c == ',' then ' ' else c|c <- line]) tree
+    classifyOneLine (splitLine line) tree
     eof <- hIsEOF handle
     if eof then
         return ()
@@ -56,9 +65,6 @@ classifyOneLine values tree = do
         _ -> error "Unknown element in the tree!"
 
 
-train :: [FilePath] -> IO ()
-train (trainingData:_) = return ()
-
 toNumber :: Read a => String -> a
 toNumber x =
     case readMaybe x of
@@ -69,7 +75,7 @@ buildTree :: Handle -> Int -> IO Tree
 buildTree handle level = do
     -- TODO: I could check for whitespace characters in here
     line <- hGetLine handle
-    let node = words (drop (2*level) line)
+    let node = words (Prelude.drop (2*level) line)
     print node
     case node of
         ["Node:", a, b] -> do
@@ -81,3 +87,70 @@ buildTree handle level = do
         _ -> error "Poorly formatted input file"
 
 -- TODO what if those files have newlines at the end?
+
+train :: [FilePath] -> IO ()
+train (training_dataset_filename:_) = do
+    contents <- readFile training_dataset_filename
+    let dataset = Prelude.map splitLine (lines contents)
+    trainTree dataset    
+    return ()
+
+sortAttribute :: [[String]] -> Int -> [[String]]
+sortAttribute list i = sortBy (compare `on` \l-> l !! i) list
+
+mean :: Fractional a => [a] -> a
+mean (x:y:xs) = (x+y)/2
+
+features :: Foldable t => [t a] -> Int
+features (x:xs) = length x - 1
+
+trainTree :: [[String]] -> IO ()
+trainTree dataset = do
+    let (g, f, t) = trainTree' dataset (features dataset - 1)
+    print ("Node: " ++ show f ++ ", " ++ show t)
+
+trainTree' :: [[String]] -> Int -> (Float, Int, Float)
+trainTree' _ (-1) = (1000, 0 ,0)
+trainTree' dataset feature =
+    if g < g2 then
+        (g, f , t)
+    else (g2, f2, t2)
+    where
+        (g, f, t) = trainTree'' [[]] (sortAttribute dataset feature) (1000, 0, 0.0) feature
+        (g2, f2, t2) = trainTree' dataset (feature-1)
+
+    
+getMean :: [String] -> [String] -> Int -> Float
+getMean x y f =
+    (read (y !! f) + read (x !! f)) / 2
+
+myConcat [[]] y = y
+myConcat x y = x ++ y
+
+trainTree'' :: [[String]] -> [[String]] -> (Float, Int, Float) -> Int -> (Float, Int, Float)
+trainTree'' _ [_] (ginisc, feature, threshold) current_feature = (ginisc, feature, threshold)
+trainTree'' x (y:ys) (gini, feature, threshold) current_feature =
+    if new_gini < gini then
+        trainTree'' (myConcat x [y]) ys (new_gini, current_feature, new_threshold) current_feature
+        else trainTree'' (myConcat x [y]) ys (gini, feature, threshold) current_feature
+    where
+        new_threshold = getMean y (head ys) current_feature
+        new_gini = giniScore (myConcat x [y]) ys
+
+giniScore :: [[String]] -> [[String]] -> Float
+giniScore f s = 
+    (giniScore' f + giniScore' s)/(fromIntegral (length f) + fromIntegral (length s))
+
+giniScore' :: [[String]] -> Float
+giniScore' x = (1 - sum (Prelude.map (\(a, b) -> (b/total)*(b/total))  (Map.toList (countClasses x)))) * total
+    where
+        total = fromIntegral (length x)
+
+safeLast [] = Nothing
+safeLast xs = Just (last xs)
+
+-- TODO
+countClasses :: [[String]] -> Map String Float
+countClasses = Data.List.foldl' (\mp x -> case safeLast x of 
+    Just l -> Map.insertWith (+) l 1 mp
+    Nothing -> mp) Map.empty
