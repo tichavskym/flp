@@ -17,7 +17,6 @@ main = do
         Just action -> action args
         Nothing -> error "Command not found."
 
-
 data Tree = EmptyTree | Leaf String | Node (Int, Float) Tree Tree deriving (Show)
 
 classify :: [FilePath] -> IO ()
@@ -25,8 +24,7 @@ classify (tree_filename:args) = do
     handle <- openFile tree_filename ReadMode
     tree <- buildTree handle 0
     hClose handle
-    c <- classify' tree args
-    print c
+    classify' tree args
 
 classify' :: Tree -> [FilePath] -> IO ()
 classify' tree [filepath] = 
@@ -61,7 +59,7 @@ classifyOneLine values tree = do
             else
                 classifyOneLine values r
         (Leaf c) -> do
-            print c
+            putStrLn c
         _ -> error "Unknown element in the tree!"
 
 
@@ -112,10 +110,10 @@ thresholdSplit (x:xs) y f t = do
 trainTree :: [[String]] -> Int -> IO ()
 trainTree dataset indent = do
     if length (countClasses dataset) == 1 then do
-        print (concat (replicate indent " ") ++ "Leaf: " ++ last (head dataset))
+        putStrLn (concat (replicate indent " ") ++ "Leaf: " ++ last (head dataset))
     else do
         let (g, f, t) = trainTree' dataset (features dataset - 1)
-        print (concat (replicate indent " ") ++ "Node: " ++ show f ++ ", " ++ show t)
+        putStrLn (concat (replicate indent " ") ++ "Node: " ++ show f ++ ", " ++ show t)
         let (x, y) = thresholdSplit (sortAttribute dataset f) [[]] f t    
         trainTree x (indent + 2)
         trainTree y (indent + 2)
