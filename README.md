@@ -1,6 +1,6 @@
-# FLP: 1. projekt
+# FLP: Binary decision tree implementation in Haskell
 
-- [Zadání](https://docs.google.com/document/d/1WChPfFOMtU3GBuqEZRUKFrNBsdJuaQ1pg1BIXiWPe98/edit?pli=1)
+- [Assignment](https://docs.google.com/document/d/1WChPfFOMtU3GBuqEZRUKFrNBsdJuaQ1pg1BIXiWPe98/edit?pli=1)
 
 ## Example usage
 
@@ -17,4 +17,4 @@
 
 ## Notes
 
-- [folds explained](https://wiki.haskell.org/Foldr_Foldl_Foldl')
+- [Folds explained](https://wiki.haskell.org/Foldr_Foldl_Foldl')
