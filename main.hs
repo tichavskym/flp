@@ -4,9 +4,7 @@ import Text.Read
 -- TODO are these imports ok? according to the assignment
 import Data.List (sortBy, foldl')
 import Data.Function (on)
-import Data.Map (insertWith)
 import Data.Map.Strict as Map
-import Data.Time.Format.ISO8601 (yearFormat)
 
 -- This argument parsing logic was adapted from the book Learn You Haskell For Great Good
 dispatch :: [(String, [String] -> IO ())]
@@ -15,8 +13,10 @@ dispatch = [("-1", classify), ("-2", train)]
 main :: IO ()
 main = do
     (command : args) <- getArgs
-    let (Just action) = Prelude.lookup command dispatch
-    action args
+    case Prelude.lookup command dispatch of
+        Just action -> action args
+        Nothing -> error "Command not found."
+
 
 data Tree = EmptyTree | Leaf String | Node (Int, Float) Tree Tree deriving (Show)
 
@@ -98,11 +98,9 @@ train (training_dataset_filename:_) = do
 sortAttribute :: [[String]] -> Int -> [[String]]
 sortAttribute list i = sortBy (compare `on` \l-> l !! i) list
 
-mean :: Fractional a => [a] -> a
-mean (x:y:xs) = (x+y)/2
-
 features :: Foldable t => [t a] -> Int
-features (x:xs) = length x - 1
+features [] = 0
+features (x:_) = length x - 1
 
 trainTree :: [[String]] -> IO ()
 trainTree dataset = do
@@ -124,11 +122,13 @@ getMean :: [String] -> [String] -> Int -> Float
 getMean x y f =
     (read (y !! f) + read (x !! f)) / 2
 
+myConcat :: [[a]] -> [[a]] -> [[a]]
 myConcat [[]] y = y
 myConcat x y = x ++ y
 
 trainTree'' :: [[String]] -> [[String]] -> (Float, Int, Float) -> Int -> (Float, Int, Float)
-trainTree'' _ [_] (ginisc, feature, threshold) current_feature = (ginisc, feature, threshold)
+trainTree'' _ [] (ginisc, feature, threshold) _ = (ginisc, feature, threshold)
+trainTree'' _ [_] (ginisc, feature, threshold) _ = (ginisc, feature, threshold)
 trainTree'' x (y:ys) (gini, feature, threshold) current_feature =
     if new_gini < gini then
         trainTree'' (myConcat x [y]) ys (new_gini, current_feature, new_threshold) current_feature
@@ -142,10 +142,11 @@ giniScore f s =
     (giniScore' f + giniScore' s)/(fromIntegral (length f) + fromIntegral (length s))
 
 giniScore' :: [[String]] -> Float
-giniScore' x = (1 - sum (Prelude.map (\(a, b) -> (b/total)*(b/total))  (Map.toList (countClasses x)))) * total
+giniScore' x = (1 - sum (Prelude.map (\(_, b) -> (b/total)*(b/total))  (Map.toList (countClasses x)))) * total
     where
         total = fromIntegral (length x)
 
+safeLast :: [a] -> Maybe a
 safeLast [] = Nothing
 safeLast xs = Just (last xs)
 
