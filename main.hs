@@ -76,7 +76,6 @@ buildTree handle level = do
     -- TODO: I could check for whitespace characters in here
     line <- hGetLine handle
     let node = words (Prelude.drop (2*level) line)
-    print node
     case node of
         ["Node:", a, b] -> do
             left <- buildTree handle (level+1)
@@ -92,7 +91,7 @@ train :: [FilePath] -> IO ()
 train (training_dataset_filename:_) = do
     contents <- readFile training_dataset_filename
     let dataset = Prelude.map splitLine (lines contents)
-    trainTree dataset    
+    trainTree dataset 0  
     return ()
 
 sortAttribute :: [[String]] -> Int -> [[String]]
@@ -102,10 +101,25 @@ features :: Foldable t => [t a] -> Int
 features [] = 0
 features (x:_) = length x - 1
 
-trainTree :: [[String]] -> IO ()
-trainTree dataset = do
-    let (g, f, t) = trainTree' dataset (features dataset - 1)
-    print ("Node: " ++ show f ++ ", " ++ show t)
+thresholdSplit :: [[String]] -> [[String]] -> Int -> Float -> ([[String]], [[String]])
+thresholdSplit [] y f t = ([], y)
+thresholdSplit (x:xs) y f t = do
+    if toNumber (x !! f) < t then
+        thresholdSplit xs (x:y) f t  
+    else
+        (x:xs, y)
+
+trainTree :: [[String]] -> Int -> IO ()
+trainTree dataset indent = do
+    if length (countClasses dataset) == 1 then do
+        print (concat (replicate indent " ") ++ "Leaf: " ++ last (head dataset))
+    else do
+        let (g, f, t) = trainTree' dataset (features dataset - 1)
+        print (concat (replicate indent " ") ++ "Node: " ++ show f ++ ", " ++ show t)
+        let (x, y) = thresholdSplit (sortAttribute dataset f) [[]] f t    
+        trainTree x (indent + 2)
+        trainTree y (indent + 2)
+    
 
 trainTree' :: [[String]] -> Int -> (Float, Int, Float)
 trainTree' _ (-1) = (1000, 0 ,0)
