@@ -14,7 +14,7 @@
 
 ## TODO
 
-- [ ] Check that there are white space characters in the tree, not some random
-  junk
-- [ ] Handle files with newlines at the end
-
+- [x] ~~Check that there are white space characters in the tree, not some random
+  junk~~
+- [x] Handle files with newlines at the end
+  - Check this lovely line `let dataset = Prelude.map splitLine (Prelude.filter (not . Prelude.null) (lines contents))`

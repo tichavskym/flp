@@ -42,15 +42,16 @@ splitLine line = words [if c == ',' then ' ' else c|c <- line]
 
 classifyLines :: Handle -> Tree -> IO ()
 classifyLines handle tree = do
-    line <- hGetLine handle
-    classifyOneLine (splitLine line) tree
     eof <- hIsEOF handle
     if eof then
         return ()
-    else
+    else do
+        line <- hGetLine handle
+        classifyOneLine (splitLine line) tree
         classifyLines handle tree
 
 classifyOneLine:: [String] -> Tree -> IO ()
+classifyOneLine [] _ = return ()
 classifyOneLine values tree = do
     case tree of
         (Node (i, t) l r) -> do
@@ -87,7 +88,8 @@ train :: [FilePath] -> IO ()
 train [] = error "Argument error. File path wasn't provided."
 train (training_dataset_filename:_) = do
     contents <- readFile training_dataset_filename
-    let dataset = Prelude.map splitLine (lines contents)
+    let dataset = Prelude.map splitLine (Prelude.filter (not . Prelude.null) (lines contents))
+    print dataset
     trainTree dataset 0  
     return ()
 
