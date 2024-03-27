@@ -89,12 +89,12 @@ train [] = error "Argument error. File path wasn't provided."
 train (training_dataset_filename:_) = do
     contents <- readFile training_dataset_filename
     let dataset = Prelude.map splitLine (Prelude.filter (not . Prelude.null) (lines contents))
-    print dataset
+    -- print dataset
     trainTree dataset 0  
     return ()
 
 sortAttribute :: [[String]] -> Int -> [[String]]
-sortAttribute list i = sortBy (compare `on` \l-> l !! i) list
+sortAttribute list i = sortBy (compare `on` (\l -> read(l !! i) :: Float)) list
 
 features :: Foldable t => [t a] -> Int
 features [] = 0
@@ -108,28 +108,38 @@ thresholdSplit (x:xs) y f t = do
     else
         (x:xs, y)
 
+stripLastIfEmpty :: [[a]] -> [[a]]
+stripLastIfEmpty list =
+    if not (Prelude.null list) && Prelude.null (last list) then
+        init list
+    else
+        list
+
 trainTree :: [[String]] -> Int -> IO ()
-trainTree dataset indent = do
+trainTree dtst indent = do
     if length (countClasses dataset) == 1 then do
         putStrLn (concat (replicate indent " ") ++ "Leaf: " ++ last (head dataset))
     else do
         let (_, f, t) = trainTree' dataset (features dataset - 1)
         putStrLn (concat (replicate indent " ") ++ "Node: " ++ show f ++ ", " ++ show t)
-        let (left, right) = thresholdSplit (sortAttribute dataset f) [[]] f t    
+        let (right, left) = thresholdSplit (sortAttribute dataset f) [[]] f t    
         trainTree left (indent + 2)
         trainTree right (indent + 2)
+    where
+        dataset = stripLastIfEmpty dtst
 
 trainTree' :: [[String]] -> Int -> (Float, Int, Float)
 trainTree' _ (-1) = (1000, 0 ,0)
-trainTree' dataset feature =
+trainTree' dataset feature = do
+    let (g, f, t) = trainTree'' [[]] sorted_dataset (1000, 0, 0.0) feature first_feature_value
+    let (g2, f2, t2) = trainTree' dataset (feature-1)
     if g < g2 then
         (g, f , t)
     else (g2, f2, t2)
     where
-        (g, f, t) = trainTree'' [[]] (sortAttribute dataset feature) (1000, 0, 0.0) feature
-        (g2, f2, t2) = trainTree' dataset (feature-1)
+        sorted_dataset = sortAttribute dataset feature
+        first_feature_value = Just (read (head sorted_dataset !! feature) :: Float)
 
-    
 getMean :: [String] -> [String] -> Int -> Float
 getMean x y f =
     (read (y !! f) + read (x !! f)) / 2
@@ -138,16 +148,18 @@ myConcat :: [[a]] -> [[a]] -> [[a]]
 myConcat [[]] y = y
 myConcat x y = x ++ y
 
-trainTree'' :: [[String]] -> [[String]] -> (Float, Int, Float) -> Int -> (Float, Int, Float)
-trainTree'' _ [] (ginisc, feature, threshold) _ = (ginisc, feature, threshold)
-trainTree'' _ [_] (ginisc, feature, threshold) _ = (ginisc, feature, threshold)
-trainTree'' x (y:ys) (gini, feature, threshold) current_feature =
-    if new_gini < gini then
-        trainTree'' (myConcat x [y]) ys (new_gini, current_feature, new_threshold) current_feature
-        else trainTree'' (myConcat x [y]) ys (gini, feature, threshold) current_feature
+trainTree'' :: [[String]] -> [[String]] -> (Float, Int, Float) -> Int -> Maybe Float -> (Float, Int, Float)
+trainTree'' _ [] (gini, feature, threshold) _ _ = (gini, feature, threshold)
+trainTree'' _ [_] (gini, feature, threshold) _ _ = (gini, feature, threshold)
+trainTree'' x (y:ys) (gini, feature, threshold) current_feature last_feature_value =
+    if new_gini < gini && last_feature_value /= current_feature_value then
+        trainTree'' new_x ys (new_gini, current_feature, new_threshold) current_feature current_feature_value
+    else trainTree'' new_x ys (gini, feature, threshold) current_feature current_feature_value
     where
+        current_feature_value = Just (read (head ys !! current_feature) :: Float)
+        new_x = myConcat x [y]
         new_threshold = getMean y (head ys) current_feature
-        new_gini = giniScore (myConcat x [y]) ys
+        new_gini = giniScore new_x ys
 
 giniScore :: [[String]] -> [[String]] -> Float
 giniScore f s = 
