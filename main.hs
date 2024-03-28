@@ -1,3 +1,7 @@
+-- Title: Binary decision tree implementation in Haskell for FLP class @ BUT FIT
+-- Author: Milan Tichavský <xticha09>
+-- Date: March 28, 2024
+
 import System.IO
 import System.Environment
 import Text.Read
