@@ -89,7 +89,6 @@ train [] = error "Argument error. File path wasn't provided."
 train (training_dataset_filename:_) = do
     contents <- readFile training_dataset_filename
     let dataset = Prelude.map splitLine (Prelude.filter (not . Prelude.null) (lines contents))
-    -- print dataset
     trainTree dataset 0  
     return ()
 
@@ -131,12 +130,12 @@ trainTree dtst indent = do
 trainTree' :: [[String]] -> Int -> (Float, Int, Float)
 trainTree' _ (-1) = (1000, 0 ,0)
 trainTree' dataset feature = do
-    let (g, f, t) = trainTree'' [[]] sorted_dataset (1000, 0, 0.0) feature first_feature_value
-    let (g2, f2, t2) = trainTree' dataset (feature-1)
     if g < g2 then
         (g, f , t)
     else (g2, f2, t2)
     where
+        (g, f, t) = trainTree'' [[]] sorted_dataset (10000, 0, 0.0) feature first_feature_value
+        (g2, f2, t2) = trainTree' dataset (feature-1)
         sorted_dataset = sortAttribute dataset feature
         first_feature_value = Just (read (head sorted_dataset !! feature) :: Float)
 
